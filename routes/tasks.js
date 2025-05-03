@@ -98,29 +98,37 @@ router.put('/:id', protect, async (req, res) => {
   }
 });
 
+
 // @route   DELETE /api/tasks/:id
 // @desc    Delete a task
 // @access  Private
+const mongoose = require('mongoose');
+
 router.delete('/:id', protect, async (req, res) => {
   try {
-    const task = await Task.findById(req.params.id);
+    const { id } = req.params;
 
-    // Check if task exists
+    // Validate MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid task ID' });
+    }
+
+    const task = await Task.findById(id);
+
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Make sure the logged in user owns the task
     if (task.user.toString() !== req.user._id.toString()) {
       return res.status(401).json({ message: 'Not authorized' });
     }
 
-    await Task.findByIdAndRemove(req.params.id);
+    await task.deleteOne(); // Safer and uses the same instance
     res.json({ message: 'Task removed' });
+
   } catch (error) {
-    console.error(error);
+    console.error('Delete task error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-module.exports = router;
